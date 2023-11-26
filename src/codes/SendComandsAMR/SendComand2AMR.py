@@ -40,7 +40,7 @@ if __name__ == '__main__':
     while True:
         try:
             serial_port = serial.Serial('/dev/ttyUSB0', baudrate=115200, timeout=1)  # Replace with your serial port and baud rate
-            print(f"Serial port /dev/ttyUSB0 opened successfully.")
+            print(f"Serial port /dev/ttyUSB1 opened successfully.")
             break
         except serial.SerialException as e:
             print(f"Error: {e}. Retrying in {3} seconds...")

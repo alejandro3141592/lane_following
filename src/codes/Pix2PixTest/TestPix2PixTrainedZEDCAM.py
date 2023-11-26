@@ -332,7 +332,7 @@ generator_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 discriminator_optimizer = tf.keras.optimizers.Adam(2e-4, beta_1=0.5)
 
 
-checkpoint_dir = '/home/alejandro/catkin_ws/src/lane_following/src/training_checkpoints/Jardineras'
+checkpoint_dir = '/home/alejandro/catkin_ws/src/lane_following/src/training_checkpoints/AvenidaTec2'
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                  discriminator_optimizer=discriminator_optimizer,
@@ -371,7 +371,7 @@ summary_writer = tf.summary.create_file_writer(
 
 
 print(tf.train.latest_checkpoint(checkpoint_dir))
-checkpoint.restore("/home/alejandro/catkin_ws/src/lane_following/src/training_checkpoints/Jardineras/ckpt-8")
+checkpoint.restore("/home/alejandro/catkin_ws/src/lane_following/src/training_checkpoints/Estacionamiento/ckpt-4")
 
 # Run the trained model on a few examples from the test set
 # for inp, tar in test_dataset.take(5):
@@ -467,7 +467,7 @@ class ZED2ImageSubscriber:
     def __init__(self):
         rospy.init_node('zed2_image_subscriber', anonymous=True)
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber('/zed2/zed_node/rgb/image_rect_color', Image, self.image_callback)
+        self.image_sub = rospy.Subscriber('/zed2/zed_node/left/image_rect_color', Image, self.image_callback)
         self.image_pub = rospy.Publisher("/Pix2Pix/Image", Image, queue_size=10)
         self.bridge = CvBridge()
         self.rate = rospy.Rate(100) 

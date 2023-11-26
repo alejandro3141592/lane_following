@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from std_msgs.msg import Int8
 
-Kp = 0.07 #constante proporcional
+Kp = 1 #constante proporcional
 left_line = np.array([0, 0, 0, 0])
 right_line = np.array([0, 0, 0, 0])
 
@@ -24,18 +24,25 @@ def resize(image):
 
 def grey(image):
     blue_channel, green_channel, red_channel = cv2.split(image)
-    #imageG = (0.2126*red_channel)+(0.7152*green_channel)+(0.0722*blue_channel)
-    imageG=red_channel
+    imageG = red_channel
     imageG.dtype = np.uint8
-    #
     inverse_image = cv2.bitwise_not(imageG)
-    
-    ret, threshG = cv2.threshold(inverse_image,100,255,cv2.THRESH_TRUNC)
-    
-    ret2, threshBlack = cv2.threshold(threshG,85,255,cv2.THRESH_TOZERO)
-   
-    
-    return threshBlack
+    ret, threshG = cv2.threshold(inverse_image, 170, 255, cv2.THRESH_TRUNC)# prueba 11 am 150 
+    ret2, threshBlack = cv2.threshold(threshG, 150, 255, cv2.THRESH_TOZERO)# prueba 11 am 140
+    return imageG#threshBlack
+
+def binarizar_imagen(img, umbral=145):
+    _, binarizada = cv2.threshold(img, umbral, 255, cv2.THRESH_BINARY)
+    return binarizada
+
+def adelgazar_lineas_verticales(img_binaria):
+    img_binaria = 0 + img_binaria
+    kernel = np.ones((1, 3), np.uint8)
+    img_adelgazada = cv2.erode(img_binaria, kernel, iterations=2)
+    return img_adelgazada
+
+
+
 def binaryOtsu(image):
    ret1, th1 = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,10)
    #ret2, th2 = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,3,10)
@@ -50,6 +57,7 @@ def gauss(image):
 
 def canny(image, low_threshold, high_threshold):
     edges = cv2.Canny(image, low_threshold, high_threshold)
+    cv2.imshow('Lane edges',edges)
     return edges
 
 def region(image):
@@ -58,7 +66,8 @@ def region(image):
        # [(500, 1000), (1000, 680), (1400, 1000)]#Triangulo PruebaTarde
        # [(500, 1000), (1100, 580), (1700, 1000)]#Triangulo Prueba
        #  [(1350, 1980), (2200, 1370), (3560, 2080)]#Triangulo Demo
-        [(150,520),(360,350),(600,520)]
+        # [(150,520),(360,350),(600,520)]
+        [(0,520),(250,200),(350,200) ,(600,520)]
     ], np.int32)
 
     mask = np.zeros_like(image)
@@ -67,7 +76,7 @@ def region(image):
     return masked
 
 def encontrar_lineas_verticales(edges):
-    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=10, maxLineGap=100)
+    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=50, minLineLength=20, maxLineGap=100)
     vertical_lines = []
     if lines is not None:
         for line in lines:
@@ -114,25 +123,36 @@ def imprimir_coordenadas_x(lines):
 
 def proyectar_circulo_y_lineas(img, lines):
     if lines:
-        # Calcular el promedio de las coordenadas en X
-        x_avg = int(np.mean([(line[0][0] + line[0][2]) // 2 for line in lines]))
+        # Filtrar líneas verticales
+        vertical_lines = [line for line in lines if abs((line[0][0] + line[0][2]) // 2 - img.shape[1] // 2) < img.shape[1] // 4]
 
-        # Obtener la altura para proyectar el círculo
-        height, _ = img.shape[:2]
-        y_position = int(height * (1 - 1/9))
+        if len(vertical_lines) >= 4:  # Cambiado a 4 líneas
+            # Ordenar las líneas por su distancia al centro
+            vertical_lines.sort(key=lambda line: abs((line[0][0] + line[0][2]) // 2 - img.shape[1] // 2))
 
-        # Dibujar un círculo púrpura en la copia de la imagen original
-        img_copy = img.copy()
-        cv2.circle(img_copy, (x_avg, y_position), 10, (255, 0, 255), -1)
+            # Tomar las cuatro líneas más cercanas al centro
+            selected_lines = vertical_lines[:4]  # Cambiado a 4 líneas
 
-        # Dibujar las líneas azules en la copia de la imagen original
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
-        return img_copy, x_avg
-    
-    else:
-        print("No hay líneas para proyectar el círculo y las líneas azules.")
+            # Calcular el promedio de las coordenadas en X
+            x_avg = int(np.mean([(line[0][0] + line[0][2]) // 2 for line in selected_lines]))
+
+            # Obtener la altura para proyectar el círculo
+            height, _ = img.shape[:2]
+            y_position = int(height * (1 - 1/9))
+
+            # Dibujar un círculo púrpura en la copia de la imagen original
+            img_copy = img.copy()
+            cv2.circle(img_copy, (x_avg, y_position), 10, (255, 0, 255), -1)
+
+            # Dibujar las líneas azules en la copia de la imagen original
+            for line in selected_lines:
+                x1, y1, x2, y2 = line[0]
+                cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
+            return img_copy, x_avg
+
+    print("No hay suficientes líneas para proyectar el círculo y las líneas azules.")
+    return img
         
 
 max_window_width = 1920  # Adjust this to your screen width
@@ -142,7 +162,7 @@ class ZED2ImageSubscriber:
     def __init__(self):
         rospy.init_node('zed2_image_subscriber', anonymous=True)
         self.bridge = CvBridge()
-        self.image_sub = rospy.Subscriber('/zed2/zed_node/rgb/image_rect_color', Image, self.image_callback)
+        self.image_sub = rospy.Subscriber('/zed2/zed_node/left/image_rect_color', Image, self.image_callback)
         self.steering_publisher = rospy.Publisher('AMR_Steering', Int8, queue_size=10)
         self.frame_width = 640
         self.frame_height =  360
@@ -153,6 +173,7 @@ class ZED2ImageSubscriber:
         copy = np.copy(or_frame)
         New_copy=resize(copy)
         grey_img = grey(New_copy)
+        cv2.imshow("GREY", grey_img)
     #  Binary = binaryOtsu(grey_img)
         
     # gaussian = gauss(grey_img)
@@ -160,8 +181,13 @@ class ZED2ImageSubscriber:
     # isolated_region = region(edges)# nuevo orden
     #  Binary = binaryOtsu(isolated_region)
         gaussian = gauss(grey_img)
-        edges = canny(gaussian, 90, 100)  # Ajustar estos valores según sea necesario
+        cv2.imshow("gaussian", gaussian)
+        img_binarizada = binarizar_imagen(gaussian)
+        cv2.imshow("img_binarizada", img_binarizada)
+        img_adelgazada = adelgazar_lineas_verticales(img_binarizada)
+        edges = canny(img_adelgazada, 20, 100)  # Ajustar estos valores según sea necesario
         isolated_region = region(edges)
+        cv2.imshow("isolated_region", isolated_region)
     # Hough = cv2.HoughLinesP(isolated_region, 1, np.pi/180, 20, np.array([]), minLineLength=10, maxLineGap=50)
     # result= draw_lane_lines(copy, lane_lines(copy, Hough))
     # Find vertical lines in the thinned image
@@ -170,6 +196,7 @@ class ZED2ImageSubscriber:
     # Proyectar un círculo y líneas azules en las coordenadas calculadas
         
         if lines_verticales:
+
             Result, center_x=proyectar_circulo_y_lineas(New_copy, lines_verticales)
             error = center_x - (640/2)
             print("center_x")
@@ -199,6 +226,7 @@ class ZED2ImageSubscriber:
 
 
     def image_callback(self, msg):
+        print("a")
         try:
             cv_image = self.bridge.imgmsg_to_cv2(msg, "bgr8")
         except Exception as e:

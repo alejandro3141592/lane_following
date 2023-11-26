@@ -18,7 +18,7 @@ a_key_pressed = False
 current_line = 1
 
 # Counter for naming the saved images
-image_counter = 7000
+image_counter = 9443
 
 # Mouse callback function for drawing lines
 def draw_lines(event, x, y, flags, param):
@@ -43,7 +43,7 @@ def draw_lines(event, x, y, flags, param):
         elif current_line == 2:
             line2_end = (x, y)
 
-def display_video(video_path, start_frame=0):
+def display_video(video_path, start_frame=900):
     global current_line, enter_pressed, a_key_pressed, image_counter
 
     # Open the video file
@@ -105,7 +105,7 @@ def display_video(video_path, start_frame=0):
 
         # Save the concatenated frame to a .jpg file with a changing name
         if enter_pressed:
-            filename = f"/home/alejandro/catkin_ws/src/lane_following/src/Data/Jardineras/concatenated_frame_{image_counter}.jpg"
+            filename = f"/home/alejandro/catkin_ws/src/lane_following/src/Data/AvenidaAumented/concatenated_frame_{image_counter}.jpg"
             cv2.imwrite(filename, concatenated_frame_color)
             print(f"Saved {filename}")
             enter_pressed = False
@@ -137,6 +137,6 @@ def display_video(video_path, start_frame=0):
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    video_path = 'TestVideos/AMR1Nov.avi'  # Replace with the path to your AVI file
-    start_frame = 8690  # Replace with the desired starting frame
+    video_path = '/home/alejandro/Downloads/AMR25Nov.mp4'  # Replace with the path to your AVI file
+    start_frame = 1510  # Replace with the desired starting frame
     display_video(video_path, start_frame)

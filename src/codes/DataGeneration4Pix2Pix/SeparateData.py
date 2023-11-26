@@ -53,10 +53,10 @@ def resize_and_move(source_path, destination_path, output_size):
 
 if __name__ == "__main__":
     # Replace 'input_folder' with the path to your folder containing images
-    input_folder = '/home/alejandro/catkin_ws/src/lane_following/src/Data/Jardineras'
+    input_folder = '/home/alejandro/catkin_ws/src/lane_following/src/Data/AvenidaAumented'
     
     # Replace 'output_folder' with the path where you want to create the training, test, and validation folders
-    output_folder = '/home/alejandro/catkin_ws/src/lane_following/src/SeparatedData/Jardineras'
+    output_folder = '/home/alejandro/catkin_ws/src/lane_following/src/SeparatedData/AvenidaAumented'
 
     output_size = (256*2, 256)
 

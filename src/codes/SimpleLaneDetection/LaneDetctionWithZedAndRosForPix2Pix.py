@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from std_msgs.msg import Int8
 
-Kp = 0.07 #constante proporcional
+Kp = 1 #constante proporcional
 left_line = np.array([0, 0, 0, 0])
 right_line = np.array([0, 0, 0, 0])
 
@@ -30,20 +30,13 @@ def grey(image):
     #
     inverse_image = cv2.bitwise_not(imageG)
     
-    ret, threshG = cv2.threshold(inverse_image,100,255,cv2.THRESH_TRUNC)
+    ret, threshG = cv2.threshold(inverse_image,50,255,cv2.THRESH_TRUNC)
     
-    ret2, threshBlack = cv2.threshold(threshG,85,255,cv2.THRESH_TOZERO)
+    ret2, threshBlack = cv2.threshold(threshG,10,255,cv2.THRESH_TOZERO)
    
     
     return threshBlack
-def binaryOtsu(image):
-   ret1, th1 = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY,11,10)
-   #ret2, th2 = cv2.adaptiveThreshold(image,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,cv2.THRESH_BINARY,3,10)
-   print('Umbral de th1:', ret1)
- 
-    #ret,thresh = cv2.threshold(image,165,255,cv2.THRESH_BINARY)
 
-   return th1
 
 def gauss(image):
     return cv2.GaussianBlur(image, (3,3), 0)
@@ -58,7 +51,7 @@ def region(image):
        # [(500, 1000), (1000, 680), (1400, 1000)]#Triangulo PruebaTarde
        # [(500, 1000), (1100, 580), (1700, 1000)]#Triangulo Prueba
        #  [(1350, 1980), (2200, 1370), (3560, 2080)]#Triangulo Demo
-        [(150,520),(360,350),(600,520)]
+        [(0,520),(60,260), (540,260), (600,520)]
     ], np.int32)
 
     mask = np.zeros_like(image)
@@ -135,8 +128,8 @@ def proyectar_circulo_y_lineas(img, lines):
         print("No hay líneas para proyectar el círculo y las líneas azules.")
         
 
-max_window_width = 1920  # Adjust this to your screen width
-max_window_height = 1080  # Adjust this to your screen height
+max_window_width = 600  # Adjust this to your screen width
+max_window_height = 520  # Adjust this to your screen height
 
 class ZED2ImageSubscriber:
     def __init__(self):
@@ -162,6 +155,7 @@ class ZED2ImageSubscriber:
         gaussian = gauss(grey_img)
         edges = canny(gaussian, 90, 100)  # Ajustar estos valores según sea necesario
         isolated_region = region(edges)
+        cv2.imshow('isolated_region',isolated_region) 
     # Hough = cv2.HoughLinesP(isolated_region, 1, np.pi/180, 20, np.array([]), minLineLength=10, maxLineGap=50)
     # result= draw_lane_lines(copy, lane_lines(copy, Hough))
     # Find vertical lines in the thinned image
