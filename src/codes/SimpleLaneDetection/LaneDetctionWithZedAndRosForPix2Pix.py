@@ -13,7 +13,8 @@ Kp = 1 #constante proporcional
 left_line = np.array([0, 0, 0, 0])
 right_line = np.array([0, 0, 0, 0])
 
-
+last_lines = None
+last_circle_coords = [None, None]
 
 def resize(image):
     new_width = 600
@@ -64,14 +65,17 @@ def encontrar_lineas_verticales(img):
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            if abs(x2 - x1) > 0:
-                slope = (y2 - y1) / (x2 - x1)
-                if abs(slope) > 0:
-                    vertical_lines.append(line)
+            vertical_lines.append(line)
+            # if abs(x2 - x1) > 0:
+            #     slope = (y2 - y1) / (x2 - x1)
+            #     if abs(slope) > 0.3:
+            #         vertical_lines.append(line)
     return vertical_lines
 
 def proyectar_lineas(img, lines, num_lines=2):
     lines_image = np.zeros_like(img)
+    img_copy = img.copy()
+    means = []
     if lines is not None:
         lines = sorted(lines, key=lambda x: np.arctan2(x[0, 3] - x[0, 1], x[0, 2] - x[0, 0]))
 
@@ -79,60 +83,121 @@ def proyectar_lineas(img, lines, num_lines=2):
         left_line = None
 
         for line in lines:
+            #print(line)
             x1, y1, x2, y2 = line[0]
             slope = (y2 - y1) / (x2 - x1)
-
+            
             if abs(slope) > 0:
                 if slope > 0 and right_line is None:
-                    right_line = line
+                    right_line = line[0]
                 elif slope < 0 and left_line is None:
-                    left_line = line
+                    left_line = line[0]
 
         if right_line is not None:
-            x1, y1, x2, y2 = right_line[0]
-            cv2.line(lines_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+            x1, y1, x2, y2 = right_line
+            slope = (y2 - y1) / (x2 - x1)
+            cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
+            print("right line  ", end="")
+            print(right_line, end="")
+            print("slope ", end="")
+            print(slope)
+            means.append((x1 + x2)//2)
+
 
         if left_line is not None:
-            x1, y1, x2, y2 = left_line[0]
-            cv2.line(lines_image, (x1, y1), (x2, y2), (255, 0, 0), 5)
+            x1, y1, x2, y2 = left_line
+            slope = (y2 - y1) / (x2 - x1)
+            cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
+            print("left line  ", end="")
+            print(left_line, end="")
+            print("slope ", end="")
+            print(slope)
+            means.append((x1 + x2)//2)
+        print("")
 
-    return lines_image
+
+        cv2.imshow("lines", lines_image)
+        selected_lines = [left_line, right_line]
+
+
+        
+        x_avg = int(np.mean(means))
+
+        # Obtener la altura para proyectar el círculo
+        height, _ = img.shape[:2]
+        y_position = int(height * (1 - 1/4))
+
+        # Actualizar la información del último frame exitoso
+        last_lines = selected_lines
+        last_circle_coords = (x_avg, y_position)
+
+        # Dibujar un círculo púrpura en la copia de la imagen original
+        
+        cv2.circle(img_copy, last_circle_coords, 10, (255, 0, 255), -1)
+    
+    return img_copy, last_circle_coords[0]
+
 
 def proyectar_circulo_y_lineas(img, lines):
     global last_lines, last_circle_coords
 
     if lines:
-        # Filtrar líneas verticales
-        vertical_lines = [line for line in lines if abs((line[0][0] + line[0][2]) // 2 - img.shape[1] // 2) < img.shape[1] // 4]
+        lines = sorted(lines, key=lambda x: np.arctan2(x[0, 3] - x[0, 1], x[0, 2] - x[0, 0]))
 
-        if len(vertical_lines) >= 2:
-            # Ordenar las líneas por su distancia al centro
-            vertical_lines.sort(key=lambda line: abs((line[0][0] + line[0][2]) // 2 - img.shape[1] // 2))
+        right_line = None
+        left_line = None
 
-            # Tomar las cuatro líneas más cercanas al centro
-            selected_lines = vertical_lines[:4]
+        for line in lines:
+            #print(line)
+            x1, y1, x2, y2 = line[0]
+            slope = (y2 - y1) / (x2 - x1)
+            
+            if abs(slope) > 0:
+                if slope > 0 and right_line is None:
+                    right_line = line[0]
+                elif slope < 0 and left_line is None:
+                    left_line = line[0]
 
-            # Calcular el promedio de las coordenadas en X
-            x_avg = int(np.mean([(line[0][0] + line[0][2]) // 2 for line in selected_lines]))
+            if right_line is not None:
+                x1, y1, x2, y2 = right_line
+                slope = (y2 - y1) / (x2 - x1)
 
-            # Obtener la altura para proyectar el círculo
-            height, _ = img.shape[:2]
-            y_position = int(height * (1 - 1/4))
+                cv2.line(right_line, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                print("right line  ", end="")
+                print(right_line, end="")
+                print("slope ", end="")
+                print(slope)
 
-            # Actualizar la información del último frame exitoso
-            last_lines = selected_lines
-            last_circle_coords = (x_avg, y_position)
 
-            # Dibujar un círculo púrpura en la copia de la imagen original
-            img_copy = img.copy()
-            cv2.circle(img_copy, last_circle_coords, 10, (255, 0, 255), -1)
+            if left_line is not None:
+                x1, y1, x2, y2 = left_line
+                slope = (y2 - y1) / (x2 - x1)
+                cv2.line(left_line, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                print("left line  ", end="")
+                print(left_line, end="")
+                print("slope ", end="")
+                print(slope)
+        
+        selected_lines = [left_line, right_line]
+        x_avg = int(np.mean([(line[0] + line[0]) // 2 for line in selected_lines]))
 
-            # Dibujar las líneas azules en la copia de la imagen original
-            for line in last_lines:
-                x1, y1, x2, y2 = line[0]
-                cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
+        # Obtener la altura para proyectar el círculo
+        height, _ = img.shape[:2]
+        y_position = int(height * (1 - 1/4))
 
-            return img_copy, last_circle_coords[0]
+        # Actualizar la información del último frame exitoso
+        last_lines = selected_lines
+        last_circle_coords = (x_avg, y_position)
+
+        # Dibujar un círculo púrpura en la copia de la imagen original
+        img_copy = img.copy()
+        cv2.circle(img_copy, last_circle_coords, 10, (255, 0, 255), -1)
+
+        # Dibujar las líneas azules en la copia de la imagen original
+        for line in last_lines:
+            x1, y1, x2, y2 = line[0]
+            cv2.line(img_copy, (x1, y1), (x2, y2), (255, 0, 0), 5)
+
 
     # Si no hay suficientes líneas en este frame, usar la información del último frame exitoso
     if last_lines is not None and last_circle_coords is not None:
@@ -174,30 +239,32 @@ class ZED2ImageSubscriber:
         img_adelgazada = adelgazar_lineas_verticales(img_binarizada)
         edges = canny(img_adelgazada, 20, 100)
         isolated_region = region(edges)
+        cv2.imshow('Lane isolated_region',isolated_region)
         # Find vertical lines in the thinned image
         lines_verticales = encontrar_lineas_verticales(isolated_region)
 
         # Project the four closest lines onto the original image
-        img_con_lineas = proyectar_lineas(New_copy, lines_verticales, num_lines=0.5)
+        #img_con_lineas = proyectar_lineas(New_copy, lines_verticales, num_lines=0.5)
 
         # Extend the lines and mark the intersection points
         img_with_intersection = New_copy
 
         # Project a purple circle and blue lines at the calculated coordinates
-        Result, center_x = proyectar_circulo_y_lineas(New_copy, lines_verticales)
+        Result, center_x = proyectar_lineas(New_copy, lines_verticales)
+        try:
+            error = center_x - (640/2)
+            print("center_x")
+            print(center_x)
 
-        error = center_x - (640/2)
-        print("center_x")
-        print(center_x)
+            print("window_width")
+            print(640/2)
 
-        print("window_width")
-        print(640/2)
-
-        # Aplicar el control proporcional
-        control_signal = Kp * error
-        print("error: ", error)
-        print("control signal: ", control_signal)
-
+            # Aplicar el control proporcional
+            control_signal = Kp * error
+            print("error: ", error)
+            print("control signal: ", control_signal)
+        except:
+            control_signal = 0
 
         # Display the processed frame
         cv2.namedWindow('Lane Detection', cv2.WINDOW_NORMAL)
@@ -220,7 +287,7 @@ class ZED2ImageSubscriber:
             return
 
         # Display the image
-        cv2.imshow("ZED2 Left Camera", cv_image)
+        cv2.imshow("image_received", cv_image)
         key = cv2.waitKey(1)
         if key == 27:  # 27 corresponds to the ASCII code for the ESC key
             rospy.signal_shutdown("ESC key pressed")

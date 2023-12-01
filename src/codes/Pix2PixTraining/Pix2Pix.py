@@ -346,6 +346,7 @@ checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                                  generator=generator,
                                  discriminator=discriminator)
 
+checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
 
 def generate_images(model, test_input, tar):
@@ -435,7 +436,7 @@ def fit(train_ds, test_ds, steps):
 
 
 
-fit(train_dataset, test_dataset, steps=60000)
+fit(train_dataset, test_dataset, steps=1)
 
 #checkpoint.restore(tf.train.latest_checkpoint(checkpoint_dir))
 
@@ -443,5 +444,8 @@ fit(train_dataset, test_dataset, steps=60000)
 for inp, tar in test_dataset.take(5):
   generate_images(generator, inp, tar)
 
-
+print(generator.summary())
+print(discriminator.summary())
+generator.save("generator.keras")
+discriminator.save("discriminator.keras")
 plt.show()
